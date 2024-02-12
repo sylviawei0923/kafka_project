@@ -66,7 +66,20 @@ def process_employee_record(msg_value):
 def persist_employee(msg):
     try:
         msg_value = json.loads(msg.value())
+
+        conn = psycopg2.connect(
+            host="localhost",
+            database="postgres",  # Make sure this is the correct database name
+            user="postgres",
+            password="postgres",
+            port="5433")  # Use the correct password
+        conn.autocommit = True
+        cur = conn.cursor()
+
         process_employee_record(msg_value, cur)
+
+        cur.close()
+        conn.close()
     except Exception as e:
         print(f"Failed to process message {msg}: {e}")
 
@@ -76,17 +89,9 @@ if __name__ == '__main__':
     consumer = CaphcaConsumer(group_id="employee_consumer_1")
 
     # Set up database connection
-    conn = psycopg2.connect(
-        host="localhost",
-        database="postgres",  # Make sure this is the correct database name
-        user="postgres",
-        password="postgres",
-        port="5433")  # Use the correct password
-    conn.autocommit = True
-    cur = conn.cursor()
+
 
     try:
         consumer.consume([employee_topic_name], lambda msg: persist_employee(msg, cur))
     finally:
-        cur.close()
-        conn.close()
+        print('Consumer loop has ended.')
