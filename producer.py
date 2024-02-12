@@ -4,7 +4,7 @@ print(sys.version)
 from kafka import KafkaProducer
 import psycopg2
 #
-employee_topic_name = "employee_data_8thDec"
+employee_topic_name = "employee_data"
 
 
 class CaphcaProducer:
@@ -27,16 +27,17 @@ class PostgresConnector:
         with self.conn.cursor() as cur:
             cur.execute(
                 "SELECT cdc_id, emp_id, first_name, last_name, dob, city, action FROM employees_cdc ORDER BY cdc_id ASC;")
+            # store all in the records variable
             records = cur.fetchall()
-            # Assuming you clear the CDC table after reading; otherwise, you need a mechanism to track processed records
+            #removes all rows in the CDC table after reading so don't have to track which records have been processed if new cdc comes
             cur.execute("TRUNCATE employees_cdc;")
             self.conn.commit()
             return records
 
 
 if __name__ == '__main__':
-    postgres = PostgresConnector()
-    producer = CaphcaProducer()
+    postgres = PostgresConnector() # fetch cdc data
+    producer = CaphcaProducer() # producing messages to topic
 
     cdc_data = postgres.fetch_cdc_data()
     for record in cdc_data:
@@ -51,3 +52,4 @@ if __name__ == '__main__':
             "action": action
         }
         producer.producer_msg(employee_topic_name, key=str(emp_id).encode(), value=change_data)
+        # the key set to id which it uses to determine the partition within the topic where message should be stored
